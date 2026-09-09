@@ -3,16 +3,13 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Unity presentation component for detection diagnostics.
+/// Displays detection diagnostics inside a Canvas RawImage.
 ///
-/// Responsibilities:
-/// - Own the diagnostic Texture2D.
-/// - Display it inside a Canvas RawImage.
-/// - Preserve the source image aspect ratio.
-/// - Display frame and detection information.
-/// - Delegate all pixel composition to DetectionOverlay.
+/// The component automatically creates:
+/// - A frame name label in the bottom-left corner.
+/// - A diagnostics label in the top-left corner.
 ///
-/// This class does not perform any detection or image processing.
+/// Pixel composition is delegated to DetectionOverlay.
 /// </summary>
 public sealed class DetectionView : MonoBehaviour
 {
@@ -21,19 +18,17 @@ public sealed class DetectionView : MonoBehaviour
     // =========================================================
 
     [Header("UI References")]
-    [SerializeField] private RawImage previewImage;
+
+    [SerializeField]
+    private RawImage previewImage;
 
     [Tooltip("Optional. Keeps the webcam/test image aspect ratio.")]
-    [SerializeField] private AspectRatioFitter aspectRatioFitter;
+    [SerializeField]
+    private AspectRatioFitter aspectRatioFitter;
 
-    [Tooltip("Optional. Displays the current frame/image name.")]
-    [SerializeField] private TMP_Text frameNameText;
-
-    [Tooltip("Optional. Displays blob and detection information.")]
-    [SerializeField] private TMP_Text diagnosticsText;
-
-    [Tooltip("Optional. Root GameObject used to show/hide the whole preview.")]
-    [SerializeField] private GameObject previewRoot;
+    [Tooltip("Optional root used to show/hide the whole preview.")]
+    [SerializeField]
+    private GameObject previewRoot;
 
 
     // =========================================================
@@ -41,14 +36,33 @@ public sealed class DetectionView : MonoBehaviour
     // =========================================================
 
     [Header("Diagnostic View")]
-    [SerializeField] private DiagnosticViewMode viewMode =
+
+    [SerializeField]
+    private DiagnosticViewMode viewMode =
         DiagnosticViewMode.ProcessedMask;
 
-    [SerializeField] private DetectionOverlaySettings overlaySettings =
+    [SerializeField]
+    private DetectionOverlaySettings overlaySettings =
         new DetectionOverlaySettings();
 
-    [SerializeField] private bool showFrameName = true;
-    [SerializeField] private bool showDiagnosticsText = true;
+    [SerializeField]
+    private bool showFrameName = true;
+
+    [SerializeField]
+    private bool showDiagnosticsText = true;
+
+
+    // =========================================================
+    // TEXT SETTINGS
+    // =========================================================
+
+    [Header("Text")]
+
+    [SerializeField]
+    private float frameNameFontSize = 18f;
+
+    [SerializeField]
+    private float diagnosticsFontSize = 16f;
 
 
     // =========================================================
@@ -58,6 +72,9 @@ public sealed class DetectionView : MonoBehaviour
     private DetectionOverlay overlay;
 
     private Texture2D displayTexture;
+
+    private TMP_Text frameNameText;
+    private TMP_Text diagnosticsText;
 
     private int width;
     private int height;
@@ -71,9 +88,11 @@ public sealed class DetectionView : MonoBehaviour
 
     private void Awake()
     {
-        overlay = new DetectionOverlay(
-            overlaySettings
-        );
+        overlay =
+            new DetectionOverlay(
+                overlaySettings
+            );
+
 
         if (previewRoot == null &&
             previewImage != null)
@@ -82,7 +101,8 @@ public sealed class DetectionView : MonoBehaviour
                 previewImage.gameObject;
         }
 
-        RefreshTextVisibility();
+
+        CreateRuntimeUI();
     }
 
 
@@ -101,7 +121,7 @@ public sealed class DetectionView : MonoBehaviour
     // =========================================================
 
     /// <summary>
-    /// Displays one processed frame and its diagnostic information.
+    /// Displays one processed frame and its diagnostics.
     /// </summary>
     public void Show(
         ImageFrame frame,
@@ -110,6 +130,7 @@ public sealed class DetectionView : MonoBehaviour
     {
         if (!frame.IsValid)
             return;
+
 
         if (previewImage == null)
         {
@@ -120,13 +141,13 @@ public sealed class DetectionView : MonoBehaviour
             return;
         }
 
+
         EnsureTexture(
             frame.Width,
             frame.Height
         );
 
 
-        // DetectionOverlay performs all pixel composition.
         Color32[] pixels =
             overlay.Compose(
                 frame,
@@ -140,7 +161,7 @@ public sealed class DetectionView : MonoBehaviour
             pixels.Length != width * height)
         {
             Debug.LogError(
-                "DetectionView: Invalid overlay output."
+                "DetectionView: invalid overlay output."
             );
 
             return;
@@ -166,26 +187,153 @@ public sealed class DetectionView : MonoBehaviour
 
 
     // =========================================================
-    // VIEW CONTROL
+    // RUNTIME UI CREATION
     // =========================================================
 
     /// <summary>
-    /// Shows or hides the complete diagnostic preview.
+    /// Creates the text labels automatically on the preview.
     /// </summary>
-    public void SetVisible(bool visible)
+    private void CreateRuntimeUI()
     {
-        if (previewRoot != null)
-        {
-            previewRoot.SetActive(
-                visible
+        if (previewImage == null)
+            return;
+
+
+        Transform parent =
+            previewImage.transform;
+
+
+        frameNameText =
+            CreateText(
+                "FrameName",
+                parent,
+                TextAlignmentOptions.BottomLeft,
+                frameNameFontSize
             );
-        }
+
+
+        RectTransform frameRect =
+            frameNameText.rectTransform;
+
+        frameRect.anchorMin =
+            new Vector2(0f, 0f);
+
+        frameRect.anchorMax =
+            new Vector2(1f, 0f);
+
+        frameRect.pivot =
+            new Vector2(0f, 0f);
+
+        frameRect.anchoredPosition =
+            new Vector2(8f, 6f);
+
+        frameRect.sizeDelta =
+            new Vector2(-16f, 28f);
+
+
+        diagnosticsText =
+            CreateText(
+                "Diagnostics",
+                parent,
+                TextAlignmentOptions.TopLeft,
+                diagnosticsFontSize
+            );
+
+
+        RectTransform diagnosticsRect =
+            diagnosticsText.rectTransform;
+
+        diagnosticsRect.anchorMin =
+            new Vector2(0f, 1f);
+
+        diagnosticsRect.anchorMax =
+            new Vector2(1f, 1f);
+
+        diagnosticsRect.pivot =
+            new Vector2(0f, 1f);
+
+        diagnosticsRect.anchoredPosition =
+            new Vector2(8f, -6f);
+
+        diagnosticsRect.sizeDelta =
+            new Vector2(-16f, 28f);
+
+
+        RefreshTextVisibility();
     }
 
 
     /// <summary>
-    /// Returns whether the diagnostic preview is currently visible.
+    /// Creates one TextMeshProUGUI element.
     /// </summary>
+    private TMP_Text CreateText(
+    string objectName,
+    Transform parent,
+    TextAlignmentOptions alignment,
+    float fontSize)
+    {
+        GameObject textObject = new GameObject(
+            objectName,
+            typeof(RectTransform),
+            typeof(TextMeshProUGUI)
+        );
+
+        textObject.transform.SetParent(parent, false);
+
+        TextMeshProUGUI text =
+            textObject.GetComponent<TextMeshProUGUI>();
+
+
+        // Load the standard TMP font directly from Resources.
+        TMP_FontAsset font = Resources.Load<TMP_FontAsset>(
+            "Fonts & Materials/LiberationSans SDF"
+        );
+
+        if (font == null)
+        {
+            Debug.LogError(
+                "DetectionView: LiberationSans SDF was not found. " +
+                "Import TextMeshPro Essential Resources."
+            );
+
+            return text;
+        }
+
+
+        text.font = font;
+
+        text.text = "";
+        text.fontSize = fontSize;
+        text.alignment = alignment;
+
+        text.color = Color.white;
+
+        text.raycastTarget = false;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+
+
+        // The font is assigned before accessing its material.
+        text.outlineColor =
+            new Color32(0, 0, 0, 220);
+
+        text.outlineWidth = 0.2f;
+
+
+        return text;
+    }
+
+
+    // =========================================================
+    // VIEW CONTROL
+    // =========================================================
+
+    public void SetVisible(bool visible)
+    {
+        if (previewRoot != null)
+            previewRoot.SetActive(visible);
+    }
+
+
     public bool IsVisible()
     {
         return previewRoot != null &&
@@ -193,9 +341,6 @@ public sealed class DetectionView : MonoBehaviour
     }
 
 
-    /// <summary>
-    /// Changes the diagnostic visualization mode at runtime.
-    /// </summary>
     public void SetViewMode(
         DiagnosticViewMode mode)
     {
@@ -207,10 +352,6 @@ public sealed class DetectionView : MonoBehaviour
     // TEXTURE
     // =========================================================
 
-    /// <summary>
-    /// Creates or recreates the diagnostic texture when
-    /// the source resolution changes.
-    /// </summary>
     private void EnsureTexture(
         int newWidth,
         int newHeight)
@@ -224,8 +365,11 @@ public sealed class DetectionView : MonoBehaviour
         }
 
 
-        width = newWidth;
-        height = newHeight;
+        width =
+            newWidth;
+
+        height =
+            newHeight;
 
 
         if (displayTexture != null)
@@ -248,10 +392,8 @@ public sealed class DetectionView : MonoBehaviour
         displayTexture.name =
             "Detection Preview Texture";
 
-
         displayTexture.filterMode =
             FilterMode.Bilinear;
-
 
         displayTexture.wrapMode =
             TextureWrapMode.Clamp;
@@ -272,9 +414,6 @@ public sealed class DetectionView : MonoBehaviour
     // ASPECT RATIO
     // =========================================================
 
-    /// <summary>
-    /// Keeps the diagnostic image from being stretched.
-    /// </summary>
     private void UpdateAspectRatio()
     {
         if (aspectRatioFitter == null ||
@@ -312,7 +451,7 @@ public sealed class DetectionView : MonoBehaviour
 
 
     // =========================================================
-    // DIAGNOSTICS TEXT
+    // DIAGNOSTICS
     // =========================================================
 
     private void UpdateDiagnosticsText(
@@ -325,17 +464,12 @@ public sealed class DetectionView : MonoBehaviour
 
         if (!showDiagnosticsText)
         {
-            diagnosticsText.gameObject.SetActive(
-                false
-            );
-
+            diagnosticsText.gameObject.SetActive(false);
             return;
         }
 
 
-        diagnosticsText.gameObject.SetActive(
-            true
-        );
+        diagnosticsText.gameObject.SetActive(true);
 
 
         int redCount =
@@ -365,7 +499,7 @@ public sealed class DetectionView : MonoBehaviour
 
 
     // =========================================================
-    // TEXT VISIBILITY
+    // VISIBILITY
     // =========================================================
 
     private void RefreshTextVisibility()
@@ -384,15 +518,5 @@ public sealed class DetectionView : MonoBehaviour
                 showDiagnosticsText
             );
         }
-    }
-
-
-    // =========================================================
-    // EDITOR VALIDATION
-    // =========================================================
-
-    private void OnValidate()
-    {
-        RefreshTextVisibility();
     }
 }

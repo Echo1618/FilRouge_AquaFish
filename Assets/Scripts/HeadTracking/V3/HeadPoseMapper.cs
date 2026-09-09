@@ -59,7 +59,6 @@ public class HeadPoseMapper
             calibrationEyeDistance /
             detection.eyeDistance;
 
-
         distance = Mathf.Clamp(
             distance,
             minDistance,

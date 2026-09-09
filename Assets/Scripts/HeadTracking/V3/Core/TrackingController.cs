@@ -37,6 +37,17 @@ public sealed class TrackingController : MonoBehaviour
     private HeadDetector headDetector;
     private readonly DetectionDiagnostics diagnostics = new DetectionDiagnostics();
 
+    private HeadPoseMapper headPoseMapper;
+
+    // =========================================================
+    // SIMULATION
+    // =========================================================
+
+    [Header("Simulation")]
+    [SerializeField] private bool useTrackingSimulator = false;
+
+    [SerializeField] private HeadTrackingSimulator trackingSimulator;
+
     private void Awake()
     {
         if (frameSource == null)
@@ -79,21 +90,83 @@ public sealed class TrackingController : MonoBehaviour
 
     private void Update()
     {
+        // ---------------------------------------------------------
+        // SIMULATION MODE
+        // ---------------------------------------------------------
+
+        if (useTrackingSimulator)
+        {
+            UpdateSimulation();
+            return;
+        }
+
+
+        // ---------------------------------------------------------
+        // REAL DETECTION MODE
+        // ---------------------------------------------------------
+
         if (!frameSource.TryGetFrame(out ImageFrame frame))
             return;
 
-        DetectionResult result = headDetector.Detect(frame, diagnostics);
-        ViewerPose pose =
-        headPoseMapper.Map(
+
+        DetectionResult result =
+            headDetector.Detect(
+                frame,
+                diagnostics
+            );
+
+
+        UpdateStereoRig(
             result,
-            frame.width,
-            frame.height
+            frame.Width,
+            frame.Height
         );
 
-stereoCameraRig.SetViewerPose(
-    pose
-);
-        detectionView.Show(frame, diagnostics, result);
+
+        detectionView.Show(
+            frame,
+            diagnostics,
+            result
+        );
+    }
+
+    private void UpdateSimulation()
+    {
+        if (trackingSimulator == null)
+            return;
+
+
+        DetectionResult result =
+            trackingSimulator.GetDetectionResult();
+
+
+        UpdateStereoRig(
+            result,
+            trackingSimulator.FrameWidth,
+            trackingSimulator.FrameHeight
+        );
+    }
+
+    private void UpdateStereoRig(
+    DetectionResult result,
+    int frameWidth,
+    int frameHeight)
+    {
+        if (stereoCameraRig == null)
+            return;
+
+
+        ViewerPose pose =
+            headPoseMapper.Map(
+                result,
+                frameWidth,
+                frameHeight
+            );
+
+
+        stereoCameraRig.SetViewerPose(
+            pose
+        );
     }
 
     private void OnDisable()
