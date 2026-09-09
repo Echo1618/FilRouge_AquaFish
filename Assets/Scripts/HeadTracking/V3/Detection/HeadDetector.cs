@@ -135,14 +135,14 @@ public sealed class HeadDetector
 
         return new DetectionResult
         {
-            Detected = true,
-            RedBox = red.Bounds,
-            BlueBox = blue.Bounds,
-            RedEye = redEye,
-            BlueEye = blueEye,
-            HeadCenter = (redEye + blueEye) * 0.5f,
-            EyeDistance = Vector2.Distance(redEye, blueEye),
-            HeadAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg
+            detected = true,
+            redBox = red.Bounds,
+            blueBox = blue.Bounds,
+            redEye = redEye,
+            blueEye = blueEye,
+            headCenter = (redEye + blueEye) * 0.5f,
+            eyeDistance = Vector2.Distance(redEye, blueEye),
+            headAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg
         };
     }
 

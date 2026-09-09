@@ -5,16 +5,16 @@ using UnityEngine;
 /// </summary>
 public struct DetectionResult
 {
-    public bool Detected;
+    public bool detected;
 
-    public RectInt RedBox;
-    public RectInt BlueBox;
+    public RectInt redBox;
+    public RectInt blueBox;
 
     // These are frame-center estimates, not measured pupil positions.
-    public Vector2 RedEye;
-    public Vector2 BlueEye;
-    public Vector2 HeadCenter;
+    public Vector2 redEye;
+    public Vector2 blueEye;
+    public Vector2 headCenter;
 
-    public float EyeDistance;
-    public float HeadAngle;
+    public float eyeDistance;
+    public float headAngle;
 }

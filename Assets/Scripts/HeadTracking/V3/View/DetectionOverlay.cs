@@ -71,7 +71,7 @@ public sealed class DetectionOverlay
                 break;
         }
 
-        if (detection.Detected)
+        if (detection.detected)
             DrawDetection(detection);
 
         return output;
@@ -169,14 +169,14 @@ public sealed class DetectionOverlay
         Color32 green = new Color32(0, 255, 0, 255);
         Color32 yellow = new Color32(255, 255, 0, 255);
 
-        DrawBoundingBox(detection.RedBox, red, settings.boxThickness);
-        DrawBoundingBox(detection.BlueBox, blue, settings.boxThickness);
+        DrawBoundingBox(detection.redBox, red, settings.boxThickness);
+        DrawBoundingBox(detection.blueBox, blue, settings.boxThickness);
 
-        DrawPoint(detection.RedEye, red, settings.eyePointRadius);
-        DrawPoint(detection.BlueEye, blue, settings.eyePointRadius);
+        DrawPoint(detection.redEye, red, settings.eyePointRadius);
+        DrawPoint(detection.blueEye, blue, settings.eyePointRadius);
 
-        DrawLine(detection.RedEye, detection.BlueEye, green, settings.lineThickness);
-        DrawPoint(detection.HeadCenter, yellow, settings.centerPointRadius);
+        DrawLine(detection.redEye, detection.blueEye, green, settings.lineThickness);
+        DrawPoint(detection.headCenter, yellow, settings.centerPointRadius);
     }
 
     private void DrawBoundingBox(RectInt box, Color32 color, int thickness)

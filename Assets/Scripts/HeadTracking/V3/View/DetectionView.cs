@@ -1,36 +1,108 @@
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
-/// Unity presentation component. It owns the Texture2D, display quad and GUI labels.
-/// Pixel composition itself is delegated to DetectionOverlay.
+/// Unity presentation component for detection diagnostics.
+///
+/// Responsibilities:
+/// - Own the diagnostic Texture2D.
+/// - Display it inside a Canvas RawImage.
+/// - Preserve the source image aspect ratio.
+/// - Display frame and detection information.
+/// - Delegate all pixel composition to DetectionOverlay.
+///
+/// This class does not perform any detection or image processing.
 /// </summary>
 public sealed class DetectionView : MonoBehaviour
 {
-    [Header("Diagnostic view")]
-    [SerializeField] private DiagnosticViewMode viewMode = DiagnosticViewMode.ProcessedMask;
-    [SerializeField] private DetectionOverlaySettings overlaySettings = new DetectionOverlaySettings();
+    // =========================================================
+    // UI REFERENCES
+    // =========================================================
+
+    [Header("UI References")]
+    [SerializeField] private RawImage previewImage;
+
+    [Tooltip("Optional. Keeps the webcam/test image aspect ratio.")]
+    [SerializeField] private AspectRatioFitter aspectRatioFitter;
+
+    [Tooltip("Optional. Displays the current frame/image name.")]
+    [SerializeField] private TMP_Text frameNameText;
+
+    [Tooltip("Optional. Displays blob and detection information.")]
+    [SerializeField] private TMP_Text diagnosticsText;
+
+    [Tooltip("Optional. Root GameObject used to show/hide the whole preview.")]
+    [SerializeField] private GameObject previewRoot;
+
+
+    // =========================================================
+    // DIAGNOSTIC VIEW
+    // =========================================================
+
+    [Header("Diagnostic View")]
+    [SerializeField] private DiagnosticViewMode viewMode =
+        DiagnosticViewMode.ProcessedMask;
+
+    [SerializeField] private DetectionOverlaySettings overlaySettings =
+        new DetectionOverlaySettings();
+
+    [SerializeField] private bool showFrameName = true;
     [SerializeField] private bool showDiagnosticsText = true;
 
+
+    // =========================================================
+    // INTERNAL DATA
+    // =========================================================
+
     private DetectionOverlay overlay;
+
+    private Texture2D displayTexture;
 
     private int width;
     private int height;
 
-    private Texture2D displayTexture;
-    private GameObject displayQuad;
-    private Material displayMaterial;
+    private bool initialized;
 
-    private string frameName = string.Empty;
-    private string diagnosticsText = string.Empty;
 
-    private GUIStyle labelStyle;
-    private GUIStyle shadowStyle;
+    // =========================================================
+    // UNITY
+    // =========================================================
 
     private void Awake()
     {
-        overlay = new DetectionOverlay(overlaySettings);
+        overlay = new DetectionOverlay(
+            overlaySettings
+        );
+
+        if (previewRoot == null &&
+            previewImage != null)
+        {
+            previewRoot =
+                previewImage.gameObject;
+        }
+
+        RefreshTextVisibility();
     }
 
+
+    private void OnDestroy()
+    {
+        if (displayTexture != null)
+        {
+            Destroy(displayTexture);
+            displayTexture = null;
+        }
+    }
+
+
+    // =========================================================
+    // PUBLIC DISPLAY
+    // =========================================================
+
+    /// <summary>
+    /// Displays one processed frame and its diagnostic information.
+    /// </summary>
     public void Show(
         ImageFrame frame,
         DetectionDiagnostics diagnostics,
@@ -39,196 +111,288 @@ public sealed class DetectionView : MonoBehaviour
         if (!frame.IsValid)
             return;
 
-        EnsureDisplay(frame.Width, frame.Height);
+        if (previewImage == null)
+        {
+            Debug.LogError(
+                "DetectionView: Preview Image is not assigned."
+            );
 
-        Color32[] pixels = overlay.Compose(frame, diagnostics, result, viewMode);
+            return;
+        }
 
-        displayTexture.SetPixels32(pixels);
-        displayTexture.Apply();
+        EnsureTexture(
+            frame.Width,
+            frame.Height
+        );
 
-        frameName = frame.Name;
-        diagnosticsText =
-            $"Red: {diagnostics.RedCandidates.Count} blobs | " +
-            $"Blue: {diagnostics.BlueCandidates.Count} blobs | " +
-            $"Pair: {(result.Detected ? "YES" : "NO")}";
+
+        // DetectionOverlay performs all pixel composition.
+        Color32[] pixels =
+            overlay.Compose(
+                frame,
+                diagnostics,
+                result,
+                viewMode
+            );
+
+
+        if (pixels == null ||
+            pixels.Length != width * height)
+        {
+            Debug.LogError(
+                "DetectionView: Invalid overlay output."
+            );
+
+            return;
+        }
+
+
+        displayTexture.SetPixels32(
+            pixels
+        );
+
+        displayTexture.Apply(false);
+
+
+        UpdateFrameName(
+            frame
+        );
+
+        UpdateDiagnosticsText(
+            diagnostics,
+            result
+        );
     }
 
-    private void EnsureDisplay(int newWidth, int newHeight)
+
+    // =========================================================
+    // VIEW CONTROL
+    // =========================================================
+
+    /// <summary>
+    /// Shows or hides the complete diagnostic preview.
+    /// </summary>
+    public void SetVisible(bool visible)
     {
-        if (displayTexture != null && width == newWidth && height == newHeight)
+        if (previewRoot != null)
+        {
+            previewRoot.SetActive(
+                visible
+            );
+        }
+    }
+
+
+    /// <summary>
+    /// Returns whether the diagnostic preview is currently visible.
+    /// </summary>
+    public bool IsVisible()
+    {
+        return previewRoot != null &&
+               previewRoot.activeSelf;
+    }
+
+
+    /// <summary>
+    /// Changes the diagnostic visualization mode at runtime.
+    /// </summary>
+    public void SetViewMode(
+        DiagnosticViewMode mode)
+    {
+        viewMode = mode;
+    }
+
+
+    // =========================================================
+    // TEXTURE
+    // =========================================================
+
+    /// <summary>
+    /// Creates or recreates the diagnostic texture when
+    /// the source resolution changes.
+    /// </summary>
+    private void EnsureTexture(
+        int newWidth,
+        int newHeight)
+    {
+        if (initialized &&
+            displayTexture != null &&
+            width == newWidth &&
+            height == newHeight)
+        {
             return;
+        }
+
 
         width = newWidth;
         height = newHeight;
 
+
         if (displayTexture != null)
-            Destroy(displayTexture);
-
-        displayTexture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-
-        if (displayQuad == null)
-            CreateDisplay();
-
-        if (displayMaterial != null)
-            displayMaterial.mainTexture = displayTexture;
-
-        UpdateDisplayTransform();
-    }
-
-    private void CreateDisplay()
-    {
-        Camera cam = Camera.main;
-        if (cam == null)
         {
-            Debug.LogError("DetectionView: Main Camera not found.");
-            return;
+            Destroy(
+                displayTexture
+            );
         }
 
-        Shader shader = Shader.Find("Unlit/Texture");
-        if (shader == null)
-            shader = Shader.Find("Universal Render Pipeline/Unlit");
 
-        if (shader == null)
-        {
-            Debug.LogError("DetectionView: Unlit shader not found.");
-            return;
-        }
-
-        displayQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        displayQuad.name = "Detection Display";
-
-        Renderer renderer = displayQuad.GetComponent<Renderer>();
-        displayMaterial = new Material(shader);
-        renderer.material = displayMaterial;
-
-        Collider collider = displayQuad.GetComponent<Collider>();
-        if (collider != null)
-            Destroy(collider);
-    }
-
-    private void UpdateDisplayTransform()
-    {
-        if (displayQuad == null)
-            return;
-
-        Camera cam = Camera.main;
-        if (cam == null)
-            return;
-
-        const float distance = 5f;
-
-        float screenHeight = cam.orthographic
-            ? cam.orthographicSize * 2f
-            : 2f * distance * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
-
-        float screenWidth = screenHeight * cam.aspect;
-        float imageAspect = width / (float)height;
-
-        float displayWidth;
-        float displayHeight;
-
-        if (imageAspect > cam.aspect)
-        {
-            displayWidth = screenWidth;
-            displayHeight = screenWidth / imageAspect;
-        }
-        else
-        {
-            displayHeight = screenHeight;
-            displayWidth = screenHeight * imageAspect;
-        }
-
-        displayQuad.transform.position = cam.transform.position + cam.transform.forward * distance;
-        displayQuad.transform.rotation = cam.transform.rotation;
-        displayQuad.transform.localScale = new Vector3(displayWidth, displayHeight, 1f);
-    }
-
-    private void OnGUI()
-    {
-        if (string.IsNullOrEmpty(frameName) || width <= 0 || height <= 0)
-            return;
-
-        EnsureGuiStyles();
-        GetDisplayedRect(out float left, out float top, out float displayedWidth, out float displayedHeight);
-
-        Rect nameRect = new Rect(
-            left + 12f,
-            top + displayedHeight - 36f,
-            displayedWidth - 24f,
-            30f
-        );
-
-        DrawLabel(nameRect, frameName);
-
-        if (showDiagnosticsText && !string.IsNullOrEmpty(diagnosticsText))
-        {
-            Rect statsRect = new Rect(
-                left + 12f,
-                top + 8f,
-                displayedWidth - 24f,
-                30f
+        displayTexture =
+            new Texture2D(
+                width,
+                height,
+                TextureFormat.RGBA32,
+                false
             );
 
-            DrawLabel(statsRect, diagnosticsText);
+
+        displayTexture.name =
+            "Detection Preview Texture";
+
+
+        displayTexture.filterMode =
+            FilterMode.Bilinear;
+
+
+        displayTexture.wrapMode =
+            TextureWrapMode.Clamp;
+
+
+        previewImage.texture =
+            displayTexture;
+
+
+        UpdateAspectRatio();
+
+
+        initialized = true;
+    }
+
+
+    // =========================================================
+    // ASPECT RATIO
+    // =========================================================
+
+    /// <summary>
+    /// Keeps the diagnostic image from being stretched.
+    /// </summary>
+    private void UpdateAspectRatio()
+    {
+        if (aspectRatioFitter == null ||
+            height <= 0)
+        {
+            return;
         }
+
+
+        aspectRatioFitter.aspectRatio =
+            width / (float)height;
     }
 
-    private void DrawLabel(Rect rect, string text)
-    {
-        Rect shadowRect = new Rect(rect.x + 2f, rect.y + 2f, rect.width, rect.height);
-        GUI.Label(shadowRect, text, shadowStyle);
-        GUI.Label(rect, text, labelStyle);
-    }
 
-    private void EnsureGuiStyles()
+    // =========================================================
+    // FRAME NAME
+    // =========================================================
+
+    private void UpdateFrameName(
+        ImageFrame frame)
     {
-        if (labelStyle != null)
+        if (frameNameText == null)
             return;
 
-        labelStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = 20,
-            alignment = TextAnchor.LowerLeft
-        };
-        labelStyle.normal.textColor = Color.white;
 
-        shadowStyle = new GUIStyle(labelStyle);
-        shadowStyle.normal.textColor = Color.black;
+        frameNameText.text =
+            frame.Name;
+
+
+        frameNameText.gameObject.SetActive(
+            showFrameName &&
+            !string.IsNullOrEmpty(frame.Name)
+        );
     }
 
-    private void GetDisplayedRect(
-        out float left,
-        out float top,
-        out float displayedWidth,
-        out float displayedHeight)
+
+    // =========================================================
+    // DIAGNOSTICS TEXT
+    // =========================================================
+
+    private void UpdateDiagnosticsText(
+        DetectionDiagnostics diagnostics,
+        DetectionResult result)
     {
-        float screenAspect = Screen.width / (float)Screen.height;
-        float imageAspect = width / (float)height;
+        if (diagnosticsText == null)
+            return;
 
-        if (imageAspect > screenAspect)
+
+        if (!showDiagnosticsText)
         {
-            displayedWidth = Screen.width;
-            displayedHeight = displayedWidth / imageAspect;
-        }
-        else
-        {
-            displayedHeight = Screen.height;
-            displayedWidth = displayedHeight * imageAspect;
+            diagnosticsText.gameObject.SetActive(
+                false
+            );
+
+            return;
         }
 
-        left = (Screen.width - displayedWidth) * 0.5f;
-        top = (Screen.height - displayedHeight) * 0.5f;
+
+        diagnosticsText.gameObject.SetActive(
+            true
+        );
+
+
+        int redCount =
+            diagnostics != null
+                ? diagnostics.RedCandidates.Count
+                : 0;
+
+
+        int blueCount =
+            diagnostics != null
+                ? diagnostics.BlueCandidates.Count
+                : 0;
+
+
+        int regionCount =
+            diagnostics != null
+                ? diagnostics.RegionCount
+                : 0;
+
+
+        diagnosticsText.text =
+            $"Red: {redCount} | " +
+            $"Blue: {blueCount} | " +
+            $"Regions: {regionCount} | " +
+            $"Pair: {(result.detected ? "YES" : "NO")}";
     }
 
-    private void OnDestroy()
+
+    // =========================================================
+    // TEXT VISIBILITY
+    // =========================================================
+
+    private void RefreshTextVisibility()
     {
-        if (displayTexture != null)
-            Destroy(displayTexture);
+        if (frameNameText != null)
+        {
+            frameNameText.gameObject.SetActive(
+                showFrameName
+            );
+        }
 
-        if (displayMaterial != null)
-            Destroy(displayMaterial);
 
-        if (displayQuad != null)
-            Destroy(displayQuad);
+        if (diagnosticsText != null)
+        {
+            diagnosticsText.gameObject.SetActive(
+                showDiagnosticsText
+            );
+        }
+    }
+
+
+    // =========================================================
+    // EDITOR VALIDATION
+    // =========================================================
+
+    private void OnValidate()
+    {
+        RefreshTextVisibility();
     }
 }
