@@ -5,28 +5,42 @@ public class HeadPoseMapper
     private readonly float maxHorizontal;
     private readonly float maxVertical;
 
-    private readonly float calibrationDistance;
-    private readonly float calibrationEyeDistance;
-
+    private readonly float distanceCalibrationConstant;
     private readonly float minDistance;
     private readonly float maxDistance;
 
+    private readonly bool invertX;
+    private readonly bool invertY;
+
     public HeadPoseMapper(
-        float maxHorizontal,
-        float maxVertical,
-        float calibrationDistance,
-        float calibrationEyeDistance,
-        float minDistance,
-        float maxDistance)
+    float maxHorizontal,
+    float maxVertical,
+    float distanceCalibrationConstant,
+    float minDistance,
+    float maxDistance,
+    bool invertX,
+    bool invertY)
     {
-        this.maxHorizontal = maxHorizontal;
-        this.maxVertical = maxVertical;
+        this.maxHorizontal =
+            maxHorizontal;
 
-        this.calibrationDistance = calibrationDistance;
-        this.calibrationEyeDistance = calibrationEyeDistance;
+        this.maxVertical =
+            maxVertical;
 
-        this.minDistance = minDistance;
-        this.maxDistance = maxDistance;
+        this.distanceCalibrationConstant =
+            distanceCalibrationConstant;
+
+        this.minDistance =
+            minDistance;
+
+        this.maxDistance =
+            maxDistance;
+
+        this.invertX =
+            invertX;
+
+        this.invertY =
+            invertY;
     }
 
 
@@ -46,6 +60,11 @@ public class HeadPoseMapper
         float normalizedY =
             (detection.headCenter.y / imageHeight - 0.5f) * 2f;
 
+        if (invertX)
+            normalizedX = -normalizedX;
+
+        if (invertY)
+            normalizedY = -normalizedY;
 
         // Convert webcam coordinates to world coordinates.
         float x = normalizedX * maxHorizontal;
@@ -55,15 +74,16 @@ public class HeadPoseMapper
         // Basic inverse-distance calibration:
         // pixelEyeDistance * realDistance ≈ constant.
         float distance =
-            calibrationDistance *
-            calibrationEyeDistance /
-            detection.eyeDistance;
+    distanceCalibrationConstant /
+    detection.eyeDistance;
 
-        distance = Mathf.Clamp(
-            distance,
-            minDistance,
-            maxDistance
-        );
+
+        distance =
+            Mathf.Clamp(
+                distance,
+                minDistance,
+                maxDistance
+            );
 
 
         // Viewer is placed in front of the screen, on negative Z.

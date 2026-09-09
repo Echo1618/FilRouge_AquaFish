@@ -1109,6 +1109,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StereoCameraRig
   leftCamera: {fileID: 1888043854}
   rightCamera: {fileID: 1753403779}
+  screenTransform: {fileID: 720153257}
   screenWidth: 1.2
   screenHeight: 0.675
   eyeSeparation: 0.02
@@ -1787,6 +1788,62 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 6982000879393223617, guid: 2269c5cfaa7f7314bba868f540b5ddad, type: 3}
   m_PrefabInstance: {fileID: 1223476269}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1329244616
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1329244617}
+  - component: {fileID: 1329244618}
+  m_Layer: 0
+  m_Name: CalibrationHUD
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &1329244617
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1329244616}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1345121927}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1329244618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1329244616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e264d1e712b723e47a8d29529d8a31d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TrackingCalibrationHUD
+  visible: 1
+  panelRect:
+    serializedVersion: 2
+    x: 15
+    y: 15
+    width: 500
+    height: 690
+  fontSize: 16
+  referencePhysicalDistance: 0.6
+  knownHorizontalOffsetMeters: 0.105
+  knownVerticalOffsetMeters: 0.1
+  averagingWindow: 30
 --- !u!1001 &1336910368
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1895,6 +1952,7 @@ Transform:
   m_Children:
   - {fileID: 435104633}
   - {fileID: 840957230}
+  - {fileID: 1329244617}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1384385026
@@ -2137,16 +2195,16 @@ RectTransform:
   m_GameObject: {fileID: 1635132651}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.25, y: 0.25, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 435104633}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 1, y: 0}
-  m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -80, y: 60}
-  m_SizeDelta: {x: 640, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0.7, y: 0.7}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: -28}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0, y: 0}
 --- !u!114 &1635132653
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2884,16 +2942,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TrackingController
   frameSource: {fileID: 82429781}
   detectionView: {fileID: 1860809404}
+  invertTrackingX: 1
+  invertTrackingY: 0
   detectionSettings:
     redHSV:
       minH: 0.95
       maxH: 0.05
-      minS: 0.6
+      minS: 0.3
       minV: 0.15
     blueHSV:
       minH: 0.52
       maxH: 0.72
-      minS: 0.35
+      minS: 0.45
       minV: 0.15
     useBlur: 1
     useOpening: 1
@@ -2907,6 +2967,7 @@ MonoBehaviour:
       verticalWeight: 0.55
       shapeWeight: 0.35
       areaWeight: 0.1
+      maxAcceptedScore: 0.55
     segmentation:
       enabled: 1
       separateBlobsByRegion: 1
@@ -2915,12 +2976,23 @@ MonoBehaviour:
   stereoCameraRig: {fileID: 720153258}
   maxHorizontal: 0.4
   maxVertical: 0.25
-  calibrationDistance: 0.7
-  calibrationEyeDistance: 120
+  usePoseSmoothing: 1
+  xySmoothingResponse: 7
+  zSmoothingResponse: 4
+  useContinuityFilter: 1
+  initialCenterRadiusRatio: 0.35
+  centerJumpFactor: 0.45
+  minCenterJumpPixels: 20
+  maxCenterJumpPixels: 90
+  maxEyeDistanceRelativeChange: 0.15
+  shortLossTimeout: 0.18
+  reacquisitionFrames: 3
+  distanceCalibrationConstant: 67
   minViewerDistance: 0.3
   maxViewerDistance: 2
-  useTrackingSimulator: 1
+  useTrackingSimulator: 0
   trackingSimulator: {fileID: 2042158055}
+  calibrationHUD: {fileID: 1329244618}
 --- !u!4 &1860809406
 Transform:
   m_ObjectHideFlags: 0

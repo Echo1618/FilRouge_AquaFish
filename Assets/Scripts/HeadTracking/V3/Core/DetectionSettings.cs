@@ -38,6 +38,11 @@ public sealed class GlassesPairSettings
     [Range(0f, 1f)] public float verticalWeight = 0.55f;
     [Range(0f, 1f)] public float shapeWeight = 0.35f;
     [Range(0f, 1f)] public float areaWeight = 0.10f;
+
+    [Tooltip("Maximum score accepted for a glasses pair. Lower is better.")]
+    [Min(0f)]
+    public float maxAcceptedScore = 0.55f;
+
 }
 
 [Serializable]

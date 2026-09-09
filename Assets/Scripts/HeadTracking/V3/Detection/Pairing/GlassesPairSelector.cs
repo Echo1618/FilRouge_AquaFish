@@ -13,6 +13,7 @@ public sealed class GlassesPairSelector
         this.settings = settings;
     }
 
+
     public bool TrySelect(
         IReadOnlyList<Region> redRegions,
         IReadOnlyList<Region> blueRegions,
@@ -77,7 +78,10 @@ public sealed class GlassesPairSelector
                 found = true;
             }
         }
-
+        if (bestScore > settings.maxAcceptedScore)
+        {
+            return default;
+        }
         return found;
     }
 
